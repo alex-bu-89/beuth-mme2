@@ -98,7 +98,10 @@ app.route('/users')
     .get(function(req, res) {
         var url = req.protocol + '://' + req.get('host') + req.originalUrl;
         //logger.debug(users.length);
-        res.json({'href': url, 'items': store.select('users')});
+        res.json({
+            'href': url,
+            'items': store.select('users')
+        });
     })
     .post(function(req, res) {
         var id = store.insert('users', req.body);
@@ -113,8 +116,26 @@ app.route('/users')
 
 app.route('/users/:id')
     .get(function(req, res) {
-        var url = req.protocol + '://' + req.get('host') + req.originalUrl;
-        res.json({'href': url, 'firstname': store.select('users', req.params.id).firstname, 'lastname': store.select('users', req.params.id).lastname});
+
+        var url = req.protocol + '://' + req.get('host') + req.originalUrl,
+            tweetList = store.select('tweets'),
+            tweets = [];
+
+        for(var t in tweetList) {
+            if (tweetList.hasOwnProperty(t)) {
+                if(tweetList[t].creator.href == url){
+                    tweets.push(tweetList[t]);
+                };
+            }
+        }
+
+        res.json({
+            'href': url,
+            'firstname': store.select('users', req.params.id).firstname,
+            'lastname': store.select('users', req.params.id).lastname,
+            'tweets': tweets
+        });
+
     })
     .post(function(req, res) {
         res.send('The request method POST is inappropriate for the URL.');
@@ -126,11 +147,12 @@ app.route('/users/:id')
     .delete(function(req, res) {
         store.remove('users', req.params.id);
         res.status(200).end();
+    })
+    .patch(function(req, res) {
+        //logger.debug("patch");
+        store.replace('users', req.params.id, req.body, true);
+        res.status(200).end();
     });
-
-// TODOs
-// TODO: some HTTP error responses in case not found
-// TODO generate for each entity on response the proper href: .. property
 
 // CatchAll for the rest (unfound routes/resources ********
 

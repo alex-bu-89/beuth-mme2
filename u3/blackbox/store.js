@@ -105,9 +105,10 @@ var store = {
      * @param {string} type
      * @param {string} id
      * @param {object} newElement  needs to have .id property of same value as id
+     * @param {isPatch} boolean, checks if request patch or put
      * @returns {this} the store object itself for pipelining
      */
-    replace: function(type, id, newElement) {
+    replace: function(type, id, newElement, isPatch) {
         var index = null;
         checkElement(newElement);
         var found = store.select(type, id);
@@ -125,7 +126,16 @@ var store = {
         if (!newElement.id == id) {
             throw new Error("element.id and given id are not identical! Cannot replace");
         }
-        memory[type][index] = newElement;
+        if(isPatch == true){
+            // try to change property's in for loop, to implement patch request
+            for(var property in newElement) {
+                if (newElement.hasOwnProperty(property)) {
+                    memory[type][index][property] = newElement[property];
+                }
+            }
+        } else {
+            memory[type][index] = newElement;
+        }
         return this;
     },
 
