@@ -8,9 +8,12 @@
  *
  *  All methods throw Errors if something went wrong.
  *  Elements stored in store are expected to have an .id property with a numeric value > 0 (except on insert(..))
- @author Johannes Konert
- @licence  CC BY-SA 4.0
- @fires Error in methods if something went wrong
+ * @author Johannes Konert
+ * @licence  CC BY-SA 4.0
+ *
+ * @fires Error in methods if something went wrong
+ * @module blackbox/store
+ * @type {Object}
  */
 "use strict";
 
@@ -23,38 +26,32 @@ var globalCounter = (function() {
 
 })();
 
-// some default store content
-var tweets = [
-    {   id: globalCounter(),
-        message: "Hello world tweet",
-        creator: {
-            id: 103,
-            href: "http://localhost:3000/users/103"
-        }
-    },
-    {   id: globalCounter(),
-        message: "Another nice tweet",
-        creator: {
-            id:104,
-            href: "http://localhost:3000/users/104"
-        }
-    }
-];
-var users = [
-    {   id: globalCounter(),
-        firstname: "Super",
-        lastname: "Woman"
-    },
-    {   id: globalCounter(),
-        firstname: "Jane",
-        lastname: "Doe"
-    }
-];
-
 // our "in memory database" is a simple object!
 var memory = {};
-memory.tweets = tweets;
-memory.users = users;
+
+// default videos content
+memory.videos = [
+    {
+        id: globalCounter(),
+        title: "Gaming can make a better world (Jane McGongigal)",
+        description: "Game Designer and Future researcher Jane McGonigal explains parts of her book about reality is Broken. She sums up how gaming and gamers can save our planet by solving the hard problems.",
+        src: "http://download.ted.com/talks/JaneMcGonigal_2010-480p.mp4?apikey=489b859150fc58263f17110eeb44ed5fba4a3b22",
+        length: 22*60+56,
+        timestamp: 12,
+        playcount: 34234,
+        ranking: 234
+    },
+    {
+        id: globalCounter(),
+        title: "The next web (Tim Berners-Lee)",
+        description: "20 years ago, Tim Berners-Lee invented the World Wide Web. For his next project, he's building a web for open, linked data that could do for numbers what the Web did for words, pictures, video: unlock our data and reframe the way we use it together.",
+        src: "http://download.ted.com/talks/TimBernersLee_2009-480p.mp4?apikey=489b859150fc58263f17110eeb44ed5fba4a3b22",
+        length: 19*60+13,
+        timestamp: 432,
+        playcount: 4234235,
+        ranking: -324
+    }
+]
 
 // private helper functions
 var checkElement = function(element) {
@@ -94,9 +91,10 @@ var store = {
     insert: function(type, element) {
         checkElement(element);
         if (element.id !== undefined) {
-            throw new Error("element already has an .id value, but should not on insert!");
+            throw new Error("element already has an .id value, but should not on insert!",e);
         }
         element.id = globalCounter();
+        memory[type] = memory[type] || [];
         memory[type].push(element);
         return element.id;
     },
@@ -107,10 +105,9 @@ var store = {
      * @param {string} type
      * @param {string} id
      * @param {object} newElement  needs to have .id property of same value as id
-     * @param {isPatch} boolean, checks if request patch or put
      * @returns {this} the store object itself for pipelining
      */
-    replace: function(type, id, newElement, isPatch) {
+    replace: function(type, id, newElement) {
         var index = null;
         checkElement(newElement);
         var found = store.select(type, id);
@@ -125,20 +122,11 @@ var store = {
             }
         });
         // case of index = null cannot happen as it was found before, but...
+        newElement.id = id; // for type safety
         if (!newElement.id == id) {
             throw new Error("element.id and given id are not identical! Cannot replace");
         }
-        // patch task
-        if(isPatch == true){
-            // try to change property's in for loop, to implement patch request
-            for(var property in newElement) {
-                if (newElement.hasOwnProperty(property)) {
-                    memory[type][index][property] = newElement[property];
-                }
-            }
-        } else {
-            memory[type][index] = newElement;
-        }
+        memory[type][index] = newElement;
         return this;
     },
 
@@ -162,8 +150,8 @@ var store = {
                 index = i;
             }
         });
-        console.log(index);
-        delete memory[type][index];
+        if (index === null) throw new Error("element to remove not found in store "+ type + " "+ id);
+        memory[type].splice(index, 1);
         return this;
     }
 };

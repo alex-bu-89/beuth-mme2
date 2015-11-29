@@ -70,7 +70,11 @@ app.use(function(req, res, next) {
 
 // tweets
 app.get('/tweets', function(req,res,next) {
-    res.json(store.select('tweets'));
+    var url = req.protocol + '://' + req.get('host') + req.originalUrl;
+    res.json({
+        href: url,
+        items: store.select('tweets')
+    });
 });
 
 app.post('/tweets', function(req,res,next) {
@@ -80,7 +84,12 @@ app.post('/tweets', function(req,res,next) {
 });
 
 app.get('/tweets/:id', function(req,res,next) {
-    res.json(store.select('tweets', req.params.id));
+    var url = req.protocol + '://' + req.get('host') + req.originalUrl;
+    res.json({
+        href: url,
+        message: store.select('tweets', req.params.id).message,
+        creator: store.select('tweets', req.params.id).creator
+    });
 });
 
 app.delete('/tweets/:id', function(req,res,next) {
@@ -93,7 +102,7 @@ app.put('/tweets/:id', function(req,res,next) {
     res.status(200).end();
 });
 
-//users
+// aufgabe 3 ressourcensammlung: users
 app.route('/users')
     .get(function(req, res) {
         var url = req.protocol + '://' + req.get('host') + req.originalUrl;
@@ -117,23 +126,13 @@ app.route('/users')
 app.route('/users/:id')
     .get(function(req, res) {
 
-        var url = req.protocol + '://' + req.get('host') + req.originalUrl,
-            tweetList = store.select('tweets'),
-            tweets = [];
+        var url = req.protocol + '://' + req.get('host') + req.originalUrl;
 
-        for(var t in tweetList) {
-            if (tweetList.hasOwnProperty(t)) {
-                if(tweetList[t].creator.href == url){
-                    tweets.push(tweetList[t]);
-                };
-            }
-        }
-
+        // response
         res.json({
             'href': url,
             'firstname': store.select('users', req.params.id).firstname,
             'lastname': store.select('users', req.params.id).lastname,
-            'tweets': tweets
         });
 
     })
@@ -152,6 +151,30 @@ app.route('/users/:id')
         //logger.debug("patch");
         store.replace('users', req.params.id, req.body, true);
         res.status(200).end();
+    });
+
+app.route('/users/:id/tweets')
+    .get(function(req, res) {
+        var url = req.protocol + '://' + req.get('host') + req.originalUrl,
+            tweetList = store.select('tweets'),
+            tweets = [];
+
+        // check if user has tweets [NOT SURE]
+        for(var t in tweetList) {
+            if (tweetList.hasOwnProperty(t)) {
+                if(tweetList[t].creator.id == req.params.id){
+                    tweets.push(tweetList[t]);
+                };
+            }
+        }
+
+        // response
+        res.json({
+            'href': url,
+            'firstname': store.select('users', req.params.id).firstname,
+            'lastname': store.select('users', req.params.id).lastname,
+            'tweets': tweets
+        });
     });
 
 // CatchAll for the rest (unfound routes/resources ********
