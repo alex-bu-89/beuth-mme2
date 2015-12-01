@@ -9,6 +9,8 @@
  *  All methods throw Errors if something went wrong.
  *  Elements stored in store are expected to have an .id property with a numeric value > 0 (except on insert(..))
  * @author Johannes Konert
+ * @author Alexander Buyanov
+ * @author Steffen Glöde
  * @licence  CC BY-SA 4.0
  *
  * @fires Error in methods if something went wrong

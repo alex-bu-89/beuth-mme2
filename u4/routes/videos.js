@@ -180,6 +180,7 @@ videos.route('/:id')
     .delete(function(req,res,next) {
         // check if id exists
         if(store.select('videos', req.params.id) != undefined){
+            // remove
             store.remove('videos', req.params.id);
             res.status(200);
             next();
