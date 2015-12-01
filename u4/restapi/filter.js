@@ -1,3 +1,13 @@
+/** This module defines the routes for videos using the store.js as db memory
+ *
+ * @author Alexander Buyanov
+ * @author Steffen Glöde
+ * @licence CC BY-SA 4.0
+ *
+ * @module filter ()
+ * @type {Router}
+ */
+
 var router = require('express').Router();
 var logger = require('debug')('me2u4:videos/filter');
 
@@ -33,6 +43,5 @@ router.use(function(req, res, next){
     }
     next();
 });
-
 
 module.exports = router;

@@ -1,16 +1,14 @@
 /** This module defines the routes for videos using the store.js as db memory
+ *  by 'get' request we can use [?filter=text,text...], [?offset=num], [?limit=num] in url to edit json
  *
  * @author Johannes Konert
+ * @author Alexander Buyanov
+ * @author Steffen Glöde
  * @licence CC BY-SA 4.0
  *
  * @module routes/videos
  * @type {Router}
  */
-
-// remember: in modules you have 3 variables given by CommonJS
-// 1.) require() function
-// 2.) module.exports
-// 3.) exports (which is module.exports)
 
 // modules
 var express = require('express');
@@ -20,23 +18,37 @@ var filter = require('../restapi/filter.js');
 
 var videos = express.Router();
 
-videos.use(filter);
+//videos.use(filter);
 
 // if you like, you can use this for task 1.b:
 var requiredKeys = {title: 'string', src: 'string', length: 'number'};
 var optionalKeys = {description: 'string', playcount: 'number', ranking: 'number'};
 var internalKeys = {id: 'number', timestamp: 'number'};
 
+var allowedAttributs = ["title", "src", "length", "description", "playcount", "ranking", "id", "timestamp"];
+
+
 // routes **********************
 videos.route('/')
     .get(function(req, res, next) {
 
         var videos = store.select('videos'),
-            result = [];
+            result = []; // result obj. is sent to res.locals.items obj. at the end of 'get'
 
-        if(res.locals.filter){
-            var filter = res.locals.filter,
+        // FILTER *****************
+        if(req.query.filter){
+
+            var filter = req.query.filter.split(','), // split 'query.filter' string and set it in an array
                 filteredVideos = [];
+
+            // error if attributs not allowed. See [allowedAttributs] array
+            if(!checkAttributs(filter)){
+                err = new Error('attribute(s) not allowed');
+                err.status = 400; // bad request
+                next(err);
+            }
+
+            // do filter and set the result
             videos.forEach(function(video) {
                 var temp = {};
                 filter.forEach(function(attr) {
@@ -46,45 +58,48 @@ videos.route('/')
             });
             result = filteredVideos;
         } else {
+
+            // send all videos if we don't have filter
             result = videos;
         }
-        if(req.query.limit){
-            if(req.query.limit < 1 || isNaN(req.query.limit) ){
-                err = new Error('limit has wrong value');
-                err.status = 400; // bad request
-                next(err);
-            }
-            res.locals.limit = Math.round(req.query.limit);
-        }
-        if(req.query.offset){
-            logger(req.query.offset > parseInt(result.length + 1));
 
+        // OFFSET *****************
+        if(req.query.offset){
+
+            // check if offset is a number, greater than 0 and smaller than video's length
             if(isNaN(req.query.offset) || req.query.offset < 0 || req.query.offset >= parseInt(result.length)){
                 err = new Error('offset has wrong value');
                 err.status = 400; // bad request
                 next(err);
             }
-            res.locals.offset = Math.round(req.query.offset);
+
+            // do offset filter
+            result = result.filter(function(element, index) { return index >= Math.round(req.query.offset) });
         }
 
-        // OFFSET
-        if(res.locals.offset){
-            result = result.filter(function(element, index) { return index >= res.locals.offset });
+        // LIMIT *****************
+        if(req.query.limit){
+
+            // check if limit is a number and greater than 1
+            if(req.query.limit < 1 || isNaN(req.query.limit) ){
+                err = new Error('limit has wrong value');
+                err.status = 400; // bad request
+                next(err);
+            }
+
+            // do offset limit
+            result = result.filter(function(element, index) { return index < Math.round(req.query.limit) });
         }
 
-        // LIMIT
-        if(res.locals.limit){
-            result = result.filter(function(element, index) { return index < res.locals.limit });
-        }
-
+        // set result in locals.items
         res.locals.items = result;
-
         next();
+
     })
     .post(function(req,res,next) {
         if(JSON.stringify(req.body) !== '{}'){ // check if req.body not empty
 
-            // check required value
+            // check required values
             if( req.body.title == undefined ||
                 req.body.src == undefined ||
                 req.body.length == undefined
@@ -94,12 +109,13 @@ videos.route('/')
                 next(err);
             }
 
-            // set default value
+            // set default values
             if(req.body.description == undefined){ req.body.description = "Some description" }
             if(req.body.playcount == undefined){ req.body.playcount = 0 }
             if(req.body.ranking == undefined){ req.body.ranking = 0 }
             if(req.body.timestamp == undefined){ req.body.timestamp = new Date().getTime() }
 
+            // insert
             var id = store.insert('videos', req.body);
             res.status(201).locals.items = store.select('videos', id);
         }
@@ -115,33 +131,44 @@ videos.route('/:id')
     .get(function(req, res, next) {
 
         var video = store.select('videos', req.params.id),
-            result = {};
+            result = {}; // result obj
 
-        if(res.locals.filter){
-
-            var filter = res.locals.filter,
+        // FILTER *****************
+        if(req.query.filter){
+            var filter = req.query.filter.split(','),
                 filteredVideos = {};
 
+            // error if attributs not allowed. See [allowedAttributs] array
+            if(!checkAttributs(filter)){
+                err = new Error('attribute(s) not allowed');
+                err.status = 400; // bad request
+                next(err);
+            }
+
+            // do filter
             filter.forEach(function(attr) {
                 filteredVideos[attr] = video[attr];
             });
+
+            // set result
             result = filteredVideos;
         } else {
-            result = video;
+            result = videos;
         }
-
         res.locals.items = result;
         next();
     })
+
     .post(function(req,res,next) {
         var err = new Error('Method POST with ID not allowed.');
         err.status = 405;
         next(err);
     })
+
     .put(function(req,res,next) {
         if(req.body.id == req.params.id){
-            store.replace('videos', req.params.id, req.body);
-            res.locals.items = store.select('videos', req.params.id);
+            store.replace('videos', req.params.id, req.body); // replace video obj. by id
+            res.locals.items = store.select('videos', req.params.id); // send this obj back
             next();
         } else {
             err = new Error('cannot replace element of id '+req.params.id+' with given element.id '+req.body.id);
@@ -149,6 +176,7 @@ videos.route('/:id')
             next(err);
         }
     })
+
     .delete(function(req,res,next) {
         // check if id exists
         if(store.select('videos', req.params.id) != undefined){
@@ -175,5 +203,21 @@ videos.use(function(req, res, next){
         res.status(204).end(); // no content;
     }
 });
+
+/**
+ * checks if attributes exist in 'allowedAttributs' array
+ * sends false if one of attributes not allowed, true if all attributes allowed
+ * @param attributes
+ * @returns {boolean}
+ */
+function checkAttributs( attributs ) {
+    // check if attribut is allowed
+    for(var i=0; i < attributs.length; i++){
+        if(allowedAttributs.indexOf(attributs[i]) == -1){
+            return false;
+        }
+    }
+    return true;
+}
 
 module.exports = videos;
