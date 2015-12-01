@@ -50,6 +50,46 @@ memory.videos = [
         timestamp: 432,
         playcount: 4234235,
         ranking: -324
+    },
+    {
+        id: globalCounter(),
+        title: "Test video 1",
+        description: "bla bla bla",
+        src: "http://download.ted.com/talks/TimBernersLee_2009-480p.mp4?apikey=489b859150fc58263f17110eeb44ed5fba4a3b22",
+        length: 12*60+13,
+        timestamp: 3432,
+        playcount: 24324,
+        ranking: -32
+    },
+    {
+        id: globalCounter(),
+        title: "Test video 2",
+        description: "blu blu blu",
+        src: "http://download.ted.com/talks/TimBernersLee_2009-480p.mp4?apikey=489b859150fc58263f17110eeb44ed5fba4a3b22",
+        length: 12*60+13,
+        timestamp: 3432,
+        playcount: 24324,
+        ranking: -32
+    },
+    {
+        id: globalCounter(),
+        title: "Test video 3",
+        description: "blo blo blo",
+        src: "http://download.ted.com/talks/TimBernersLee_2009-480p.mp4?apikey=489b859150fc58263f17110eeb44ed5fba4a3b22",
+        length: 12*60+13,
+        timestamp: 213,
+        playcount: 12312,
+        ranking: 0
+    },
+    {
+        id: globalCounter(),
+        title: "Test Test Test Test Test",
+        description: "none",
+        src: "http://download.ted.com/talks/TimBernersLee_2009-480p.mp4?apikey=489b859150fc58263f17110eeb44ed5fba4a3b22",
+        length: 12*60+13,
+        timestamp: 213,
+        playcount: 12312,
+        ranking: 0
     }
 ]
 

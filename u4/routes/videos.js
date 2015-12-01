@@ -32,10 +32,11 @@ videos.route('/')
     .get(function(req, res, next) {
 
         var videos = store.select('videos'),
-            filteredVideos = [];
+            result = [];
 
         if(res.locals.filter){
-            var filter = res.locals.filter;
+            var filter = res.locals.filter,
+                filteredVideos = [];
             videos.forEach(function(video) {
                 var temp = {};
                 filter.forEach(function(attr) {
@@ -43,10 +44,40 @@ videos.route('/')
                 });
                 filteredVideos.push(temp);
             });
-            res.locals.items = filteredVideos;
+            result = filteredVideos;
         } else {
-            res.locals.items = videos;
+            result = videos;
         }
+        if(req.query.limit){
+            if(req.query.limit < 1 || isNaN(req.query.limit) ){
+                err = new Error('limit has wrong value');
+                err.status = 400; // bad request
+                next(err);
+            }
+            res.locals.limit = Math.round(req.query.limit);
+        }
+        if(req.query.offset){
+            logger(req.query.offset > parseInt(result.length + 1));
+
+            if(isNaN(req.query.offset) || req.query.offset < 0 || req.query.offset >= parseInt(result.length)){
+                err = new Error('offset has wrong value');
+                err.status = 400; // bad request
+                next(err);
+            }
+            res.locals.offset = Math.round(req.query.offset);
+        }
+
+        // OFFSET
+        if(res.locals.offset){
+            result = result.filter(function(element, index) { return index >= res.locals.offset });
+        }
+
+        // LIMIT
+        if(res.locals.limit){
+            result = result.filter(function(element, index) { return index < res.locals.limit });
+        }
+
+        res.locals.items = result;
 
         next();
     })
@@ -84,18 +115,22 @@ videos.route('/:id')
     .get(function(req, res, next) {
 
         var video = store.select('videos', req.params.id),
-            filteredVideos = {};
+            result = {};
 
         if(res.locals.filter){
-            var filter = res.locals.filter;
+
+            var filter = res.locals.filter,
+                filteredVideos = {};
+
             filter.forEach(function(attr) {
                 filteredVideos[attr] = video[attr];
             });
-            res.locals.items = filteredVideos;
+            result = filteredVideos;
         } else {
-            res.locals.items = video;
+            result = video;
         }
 
+        res.locals.items = result;
         next();
     })
     .post(function(req,res,next) {
