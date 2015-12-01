@@ -50,10 +50,6 @@ app.use(restAPIchecks);
 app.use('/videos', videos);
 
 
-
-
-
-
 // (from express-generator boilerplate  standard code)
 // Errorhandling and requests without proper URLs ************************
 // catch 404 and forward to error handler

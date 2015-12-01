@@ -16,8 +16,11 @@
 var express = require('express');
 var logger = require('debug')('me2u4:videos');
 var store = require('../blackbox/store');
+var filter = require('../restapi/filter.js');
 
 var videos = express.Router();
+
+videos.use(filter);
 
 // if you like, you can use this for task 1.b:
 var requiredKeys = {title: 'string', src: 'string', length: 'number'};
@@ -27,19 +30,40 @@ var internalKeys = {id: 'number', timestamp: 'number'};
 // routes **********************
 videos.route('/')
     .get(function(req, res, next) {
-        res.locals.items = store.select('videos');
+
+        var videos = store.select('videos'),
+            filteredVideos = [];
+
+        if(res.locals.filter){
+            var filter = res.locals.filter;
+            videos.forEach(function(video) {
+                var temp = {};
+                filter.forEach(function(attr) {
+                    temp[attr] = video[attr];
+                });
+                filteredVideos.push(temp);
+            });
+            res.locals.items = filteredVideos;
+        } else {
+            res.locals.items = videos;
+        }
+
         next();
     })
     .post(function(req,res,next) {
         if(JSON.stringify(req.body) !== '{}'){ // check if req.body not empty
 
+            // check required value
             if( req.body.title == undefined ||
                 req.body.src == undefined ||
                 req.body.length == undefined
             ){
-                // TODO if required fields doesn't exist
+                err = new Error('required fields missing');
+                err.status = 400; // bad request
+                next(err);
             }
 
+            // set default value
             if(req.body.description == undefined){ req.body.description = "Some description" }
             if(req.body.playcount == undefined){ req.body.playcount = 0 }
             if(req.body.ranking == undefined){ req.body.ranking = 0 }
@@ -58,7 +82,20 @@ videos.route('/')
 
 videos.route('/:id')
     .get(function(req, res, next) {
-        res.locals.items = store.select('videos', req.params.id);
+
+        var video = store.select('videos', req.params.id),
+            filteredVideos = {};
+
+        if(res.locals.filter){
+            var filter = res.locals.filter;
+            filter.forEach(function(attr) {
+                filteredVideos[attr] = video[attr];
+            });
+            res.locals.items = filteredVideos;
+        } else {
+            res.locals.items = video;
+        }
+
         next();
     })
     .post(function(req,res,next) {
@@ -89,8 +126,6 @@ videos.route('/:id')
             next(err);
         }
     });
-
-
 
 // this middleware function can be used, if you like or remove it
 videos.use(function(req, res, next){
