@@ -1,170 +1,162 @@
-/** This module defines the routes for videos using the store.js as db memory
- *  by 'get' request we can use [?filter=text,text...], [?offset=num], [?limit=num] in url to edit json
+/** This module defines the routes for videos using a mongoose model
  *
  * @author Johannes Konert
- * @author Alexander Buyanov
- * @author Steffen Glöde
  * @licence CC BY-SA 4.0
  *
  * @module routes/videos
  * @type {Router}
  */
 
+// remember: in modules you have 3 variables given by CommonJS
+// 1.) require() function
+// 2.) module.exports
+// 3.) exports (which is module.exports)
+
 // modules
 var express = require('express');
-var logger = require('debug')('me2u4:videos');
-var store = require('../blackbox/store');
-var filter = require('../restapi/filter.js');
+var logger = require('debug')('me2u5:videos');
+var storetools = require('../restapi/store-tools');
 
-// db
+// db conf
 var mongoose = require('mongoose');
 var db = mongoose.connect('mongodb://localhost:27017/me2');
+
+// db models
 var videosModel = require('../models/videos.js');
 
+// routes
 var videos = express.Router();
 
-//videos.use(filter);
+// status codes
+var codes = {
+    success: 200,
+    created: 201,
+    wrongrequest: 400,
+    notfound: 404,
+    wrongmethod: 405,
+    wrongdatatyperequest: 406,
+    wrongmediasend: 415,
+    nocontent: 204
+};
 
-// if you like, you can use this for task 1.b:
 var requiredKeys = {title: 'string', src: 'string', length: 'number'};
 var optionalKeys = {description: 'string', playcount: 'number', ranking: 'number'};
-var internalKeys = {id: 'number', timestamp: 'number'};
-
-var allowedAttributs = ["title", "src", "length", "description", "playcount", "ranking", "id", "timestamp"];
-
+var internalKeys = {_id: 'string', timestamp: 'number', "__v": 'string', "updatedAt": 'number'};
 
 // routes **********************
 videos.route('/')
     .get(function(req, res, next) {
-        videosModel.find({}, function(err, items) {
+        videosModel.find( {}, function(err, items) {
             if (!err) {
-
-                var result,
-                    videos = items; // result obj. is sent to res.locals.items obj. at the end of 'get'
-
-                result = videos;
-
-                // set result in locals.items
-                res.locals.items = result;
+                res.locals.items = items;
+                res.locals.processed = true;
                 next();
-
             } else {
                 next(err);
             }
         });
     })
     .post(function(req,res,next) {
-        if(JSON.stringify(req.body) !== '{}'){ // check if req.body not empty
-
-            // check required values
-            if( req.body.title == undefined ||
-                req.body.src == undefined ||
-                req.body.length == undefined
-            ){
-                err = new Error('required fields missing');
-                err.status = 400; // bad request
+        // set timestamp
+        req.body.timestamp = new Date().getTime();
+        // insert in db
+        var video = new videosModel(req.body);
+        video.save(function(err) {
+            if (!err) {
+                res.status(201).locals.items = video;
+                res.locals.processed = true;
+                next();
+            } else {
+                err.message += ' in fields: ' + Object.getOwnPropertyNames(err.errors);
+                err.status = codes.wrongrequest;
                 next(err);
             }
-
-            // set default values
-            if(req.body.description == undefined){ req.body.description = "Some description" }
-            if(req.body.playcount == undefined){ req.body.playcount = 0 }
-            if(req.body.ranking == undefined){ req.body.ranking = 0 }
-            if(req.body.timestamp == undefined){ req.body.timestamp = new Date().getTime() }
-
-            // insert
-            // var id = store.insert('videos', req.body);
-
-            var video = new videosModel(req.body);
-            video.save(function(err) {
-                if (!err) {
-                    res.status(201).locals.items = video;
-                    next();
-                } else {
-                    next(err);
-                }
-            });
-
+        });
+    })
+    .all(function(req, res, next) {
+        if (res.locals.processed) {
+            next();
         } else {
-            err = new Error('body is missing');
-            err.status = 400;
+            // reply with wrong method code 405
+            var err = new Error('this method is not allowed at ' + req.originalUrl);
+            err.status = codes.wrongmethod;
             next(err);
         }
-
-    })
-    .put(function(req,res,next) {
-        var err = new Error('Method PUT without ID not allowed.');
-        err.status = 405;
-        next(err);
     });
 
 videos.route('/:id')
-    .get(function(req, res, next) {
-
-        var video = store.select('videos', req.params.id),
-            result = {}; // result obj
-
-        // FILTER *****************
-        if(req.query.filter){
-            var filter = req.query.filter.split(','),
-                filteredVideos = {};
-
-            // error if attributs not allowed. See [allowedAttributs] array
-            if(!checkAttributs(filter)){
-                err = new Error('attribute(s) not allowed');
-                err.status = 400; // bad request
+    .get(function(req, res,next) {
+        // TODO check req.params.id
+        videosModel.findById(req.params.id, function(err, items) {
+            if (!err) {
+                res.locals.items = items;
+                res.locals.processed = true;
+                next();
+            } else {
                 next(err);
             }
-
-            // do filter
-            filter.forEach(function(attr) {
-                filteredVideos[attr] = video[attr];
-            });
-
-            // set result
-            result = filteredVideos;
-        } else {
-            result = videos;
-        }
-        res.locals.items = result;
-        next();
+        });
     })
+    .put(function(req, res,next) {
+        // check if id's are equal
+        if (req.params.id === req.body._id) {
 
-    .post(function(req,res,next) {
-        var err = new Error('Method POST with ID not allowed.');
-        err.status = 405;
+            storetools.checkKeys(req.body, requiredKeys, optionalKeys, internalKeys, videosModel);
+
+            //logger(req.body);
+
+            videosModel.findByIdAndUpdate(req.params.id, req.body, {new: true}, function(err, item) {
+                res.status(200);
+                res.locals.items = item;
+                res.locals.processed = true;
+                next();
+            });
+        } else {
+            var err = new Error('id of PUT resource and send JSON body are not equal ' + req.params.id + " " + req.body.id);
+            err.status = codes.wrongrequest;
+            next(err);
+        }
+    })
+    .delete(function(req,res,next) {
+        var id = parseInt(req.params.id);
+
+        // TODO replace store and use mongoose/MongoDB
+        // store.remove(storeKey, id);
+
+        // ...
+        //    var err = new Error('No element to delete with id ' + req.params.id);
+        //    err.status = codes.notfound;
+        //    next(err);
+        // ...
+        res.locals.processed = true;
+        next();
+
+
+    })
+    .patch(function(req,res,next) {
+        // TODO replace these lines by correct code with mongoose/mongoDB
+        var err = new Error('Unimplemented method!');
+        err.status = 500;
         next(err);
     })
 
-    .put(function(req,res,next) {
-        if(req.body.id == req.params.id){
-            store.replace('videos', req.params.id, req.body); // replace video obj. by id
-            res.locals.items = store.select('videos', req.params.id); // send this obj back
+    .all(function(req, res, next) {
+        if (res.locals.processed) {
             next();
         } else {
-            err = new Error('cannot replace element of id '+req.params.id+' with given element.id '+req.body.id);
-            err.status = 400; // bad request
-            next(err);
-        }
-    })
-
-    .delete(function(req,res,next) {
-        // check if id exists
-        if(store.select('videos', req.params.id) != undefined){
-            // remove
-            store.remove('videos', req.params.id);
-            res.status(200);
-            next();
-        } else {
-            err = new Error('couldn\'t delete video with id: ' + req.params.id + '. id doesn\'t exist');
-            err.status = 404; // not found
+            // reply with wrong method code 405
+            var err = new Error('this method is not allowed at ' + req.originalUrl);
+            err.status = codes.wrongmethod;
             next(err);
         }
     });
+
 
 // this middleware function can be used, if you like or remove it
+// it looks for object(s) in res.locals.items and if they exist, they are send to the client as json
 videos.use(function(req, res, next){
     // if anything to send has been added to res.locals.items
+    logger("[res.locals.items length]: " + Object.getOwnPropertyNames(res.locals.items).length);
     if (res.locals.items && res.locals.items.length > 0) {
         // then we send it as json and remove it
         res.json(res.locals.items);
@@ -175,21 +167,5 @@ videos.use(function(req, res, next){
         res.status(204).end(); // no content;
     }
 });
-
-/**
- * checks if attributes exist in 'allowedAttributs' array
- * sends false if one of attributes not allowed, true if all attributes allowed
- * @param attributes
- * @returns {boolean}
- */
-function checkAttributs( attributs ) {
-    // check if attribut is allowed
-    for(var i=0; i < attributs.length; i++){
-        if(allowedAttributs.indexOf(attributs[i]) == -1){
-            return false;
-        }
-    }
-    return true;
-}
 
 module.exports = videos;
