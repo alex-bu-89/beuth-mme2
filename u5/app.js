@@ -6,6 +6,8 @@
  * DEBUG=me2*
  *
  * @author Johannes Konert
+ * @author Alexander Buyanov
+ * @author Steffen Glöde
  * @licence CC BY-SA 4.0
  *
  */
@@ -16,7 +18,7 @@ var path = require('path');
 var favicon = require('serve-favicon');
 var bodyParser = require('body-parser');
 var requestLogger = require('morgan');
-var debug = require('debug')('me2u5:server');
+var debug = require('debug')('me2:server');
 var morgan = require('morgan');
 
 // own modules

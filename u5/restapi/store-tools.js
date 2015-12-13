@@ -1,6 +1,8 @@
 /** This module defines some functions to check objects for proper required and optional fields.
  *
  * @author Johannes Konert
+ * @author Alexander Buyanov
+ * @author Steffen Glöde
  * @licence CC BY-SA 4.0
  *
  * @module restapi/store-tools
@@ -8,6 +10,8 @@
  */
 
 "use strict";
+
+var logger = require('debug')('me2:store-tool');
 
 // status codes
 var codes = {
@@ -39,16 +43,17 @@ var codes = {
  * @return {undefined}
  * @throws Error if requirements not fullfilled.
  */
- exports.checkKeys = function checkKeys(item, req, opt, none, schema) {
-     function throwErr(message, code) {
-         var err = new Error(message);
-         err.status = code;
-         throw err;
-     }
+exports.checkKeys = function checkKeys(item, req, opt, none, schema) {
 
-     if (!item) {
-        throwErr("proper body missing", codes.wrongrequest);
+    //logger(schema.schema.paths[options]);
+
+    function throwErr(message, code) {
+        var err = new Error(message);
+        err.status = code;
+        throw err;
     }
+
+    if (!item) { throwErr("proper body missing", codes.wrongrequest); }
     req = req || {};
     opt = opt || {};
     none = none || {};

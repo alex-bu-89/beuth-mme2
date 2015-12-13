@@ -1,21 +1,18 @@
 /** This module defines the routes for videos using a mongoose model
  *
- * @author Johannes Konert
+ * @author Alexander Buyanov
+ * @author Steffen Glöde
  * @licence CC BY-SA 4.0
  *
  * @module routes/videos
  * @type {Router}
  */
 
-// remember: in modules you have 3 variables given by CommonJS
-// 1.) require() function
-// 2.) module.exports
-// 3.) exports (which is module.exports)
-
 // modules
 var express = require('express');
-var logger = require('debug')('me2u5:videos');
+var logger = require('debug')('me2:videos');
 var storetools = require('../restapi/store-tools');
+var versionChecker = require('../restapi/version-check');
 
 // db conf
 var mongoose = require('mongoose');
@@ -28,20 +25,21 @@ var videosModel = require('../models/videos.js');
 var videos = express.Router();
 
 // status codes
-var codes = {
+codes = {
     success: 200,
     created: 201,
     wrongrequest: 400,
     notfound: 404,
     wrongmethod: 405,
     wrongdatatyperequest: 406,
+    conflict: 409,
     wrongmediasend: 415,
     nocontent: 204
 };
 
 var requiredKeys = {title: 'string', src: 'string', length: 'number'};
 var optionalKeys = {description: 'string', playcount: 'number', ranking: 'number'};
-var internalKeys = {_id: 'string', timestamp: 'number', "__v": 'string', "updatedAt": 'number'};
+var internalKeys = {_id: 'string', timestamp: 'number', "updatedAt": 'number'};
 
 // routes **********************
 videos.route('/')
@@ -57,8 +55,13 @@ videos.route('/')
         });
     })
     .post(function(req,res,next) {
+
+        // delete internalKeys from req.body. not checking required and optional fields
+        storetools.checkKeys(req.body, undefined, undefined, internalKeys, videosModel);
+
         // set timestamp
         req.body.timestamp = new Date().getTime();
+
         // insert in db
         var video = new videosModel(req.body);
         video.save(function(err) {
@@ -85,14 +88,15 @@ videos.route('/')
     });
 
 videos.route('/:id')
-    .get(function(req, res,next) {
-        // TODO check req.params.id
+    .get(function(req, res, next) {
         videosModel.findById(req.params.id, function(err, items) {
             if (!err) {
                 res.locals.items = items;
                 res.locals.processed = true;
                 next();
             } else {
+                var err = new Error("[/:id error]: " + err);
+                err.status = codes.wrongrequest;
                 next(err);
             }
         });
@@ -101,15 +105,40 @@ videos.route('/:id')
         // check if id's are equal
         if (req.params.id === req.body._id) {
 
+            // check required and optional keys in req.body, delete internal keys from req.body
             storetools.checkKeys(req.body, requiredKeys, optionalKeys, internalKeys, videosModel);
 
-            //logger(req.body);
+            // find document by id to check versions
+            videosModel.findById(req.params.id, function (err, item) {
 
-            videosModel.findByIdAndUpdate(req.params.id, req.body, {new: true}, function(err, item) {
-                res.status(200);
-                res.locals.items = item;
-                res.locals.processed = true;
-                next();
+                if (err) {
+                    var err = new Error("[Id not found, put]: " + err);
+                    err.status = codes.notfound;
+                    next(err);
+                }
+
+                // task 3 version control
+                try {
+                    versionChecker.check(req.body, item);
+                } catch (e) {
+                    var err = new Error(e.message);
+                    err.status = codes.conflict;
+                    next(err);
+                }
+
+                // update document by id
+                videosModel.findByIdAndUpdate(req.params.id, req.body, { new: true }, function(err, item) {
+                    if (err) {
+                        var err = new Error("[Put error]: " + err);
+                        err.status = codes.wrongrequest;
+                        next(err);
+                    }
+                    res.status(200);
+                    res.locals.items = item;
+                    res.locals.processed = true;
+                    next();
+                });
+
             });
         } else {
             var err = new Error('id of PUT resource and send JSON body are not equal ' + req.params.id + " " + req.body.id);
@@ -118,26 +147,56 @@ videos.route('/:id')
         }
     })
     .delete(function(req,res,next) {
-        var id = parseInt(req.params.id);
-
-        // TODO replace store and use mongoose/MongoDB
-        // store.remove(storeKey, id);
-
-        // ...
-        //    var err = new Error('No element to delete with id ' + req.params.id);
-        //    err.status = codes.notfound;
-        //    next(err);
-        // ...
-        res.locals.processed = true;
-        next();
-
+        // remove document by id
+        videosModel.findByIdAndRemove(req.params.id, function(err, item) {
+            if (err) {
+                var err = new Error("[Delete error]: " + err);
+                err.status = codes.wrongrequest;
+                next(err);
+            }
+            res.status(200);
+            res.locals.processed = true;
+            next();
+        });
 
     })
     .patch(function(req,res,next) {
-        // TODO replace these lines by correct code with mongoose/mongoDB
-        var err = new Error('Unimplemented method!');
-        err.status = 500;
-        next(err);
+
+        // delete internalKeys from req.body
+        storetools.checkKeys(req.body, undefined, undefined, internalKeys, videosModel);
+
+        // find document by id to check versions
+        videosModel.findById(req.params.id, function (err, item) {
+
+            if (err) {
+                var err = new Error("[ID not found, patch]: " + err);
+                err.status = codes.notfound;
+                next(err);
+            }
+
+            // task 3 version control
+            try {
+                versionChecker.check(req.body, item);
+            } catch (e) {
+                var err = new Error(e.message);
+                err.status = codes.conflict;
+                next(err);
+            }
+
+            // update document by id
+            videosModel.findByIdAndUpdate(req.params.id, req.body, {new: true}, function(err, item) {
+                if (err) {
+                    var err = new Error("[Patch error]: " + err);
+                    err.status = codes.wrongrequest;
+                    next(err);
+                }
+                res.status(200);
+                res.locals.items = item;
+                res.locals.processed = true;
+                next();
+            });
+
+        });
     })
 
     .all(function(req, res, next) {
@@ -151,12 +210,10 @@ videos.route('/:id')
         }
     });
 
-
 // this middleware function can be used, if you like or remove it
 // it looks for object(s) in res.locals.items and if they exist, they are send to the client as json
 videos.use(function(req, res, next){
     // if anything to send has been added to res.locals.items
-    logger("[res.locals.items length]: " + Object.getOwnPropertyNames(res.locals.items).length);
     if (res.locals.items && res.locals.items.length > 0) {
         // then we send it as json and remove it
         res.json(res.locals.items);
