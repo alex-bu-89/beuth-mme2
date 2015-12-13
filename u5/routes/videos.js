@@ -13,6 +13,7 @@ var express = require('express');
 var logger = require('debug')('me2:videos');
 var storetools = require('../restapi/store-tools');
 var versionChecker = require('../restapi/version-check');
+var filterTool = require('../restapi/filter');
 
 // db conf
 var mongoose = require('mongoose');
@@ -44,15 +45,21 @@ var internalKeys = {_id: 'string', timestamp: 'number', "updatedAt": 'number'};
 // routes **********************
 videos.route('/')
     .get(function(req, res, next) {
-        videosModel.find( {}, function(err, items) {
-            if (!err) {
-                res.locals.items = items;
-                res.locals.processed = true;
-                next();
-            } else {
-                next(err);
-            }
-        });
+
+        // task 4 - filter
+        var filter = filterTool.filter(req.query.filter, videosModel);
+
+        videosModel.find({})
+            .select(filter)
+            .exec(function(err, items) {
+                if (!err) {
+                    res.locals.items = items;
+                    res.locals.processed = true;
+                    next();
+                } else {
+                    next(err);
+                }
+            });
     })
     .post(function(req,res,next) {
 
@@ -89,17 +96,23 @@ videos.route('/')
 
 videos.route('/:id')
     .get(function(req, res, next) {
-        videosModel.findById(req.params.id, function(err, items) {
-            if (!err) {
-                res.locals.items = items;
-                res.locals.processed = true;
-                next();
-            } else {
-                var err = new Error("[/:id error]: " + err);
-                err.status = codes.wrongrequest;
-                next(err);
-            }
-        });
+
+        // task 4 - filter
+        var filter = filterTool.filter(req.query.filter, videosModel);
+
+        videosModel.find({_id:req.params.id})
+            .select(filter)
+            .exec(function(err, items) {
+                if (!err) {
+                    res.locals.items = items;
+                    res.locals.processed = true;
+                    next();
+                } else {
+                    var err = new Error("[/:id error]: " + err);
+                    err.status = codes.wrongrequest;
+                    next(err);
+                }
+            });
     })
     .put(function(req, res,next) {
         // check if id's are equal
