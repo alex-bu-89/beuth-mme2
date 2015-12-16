@@ -38,19 +38,23 @@ codes = {
     nocontent: 204
 };
 
-var requiredKeys = {title: 'string', src: 'string', length: 'number'};
+/*var requiredKeys = {title: 'string', src: 'string', length: 'number'};
 var optionalKeys = {description: 'string', playcount: 'number', ranking: 'number'};
-var internalKeys = {_id: 'string', timestamp: 'number', "updatedAt": 'number'};
+var internalKeys = {_id: 'string', timestamp: 'number', "updatedAt": 'number'};*/
 
 // routes **********************
 videos.route('/')
     .get(function(req, res, next) {
 
-        // task 4 - filter
-        var filter = filterTool.filter(req.query.filter, videosModel);
+        // task 4, 5 - filter, limit, offset
+        var filter = filterTool.dofilter().filter(req.query.filter, videosModel);
+        var limit = filterTool.dofilter().limit(req.query.limit);
+        var offset = filterTool.dofilter().offset(req.query.offset);
 
         videosModel.find({})
-            .select(filter)
+            .select(filter) // filter
+            .limit(limit) // limit
+            .skip(offset) // offset
             .exec(function(err, items) {
                 if (!err) {
                     res.locals.items = items;
@@ -63,8 +67,8 @@ videos.route('/')
     })
     .post(function(req,res,next) {
 
-        // delete internalKeys from req.body. not checking required and optional fields
-        storetools.checkKeys(req.body, undefined, undefined, internalKeys, videosModel);
+        // delete internalKeys from req.body
+        storetools.checkKeys(req.body, videosModel);
 
         // set timestamp
         req.body.timestamp = new Date().getTime();
@@ -97,8 +101,8 @@ videos.route('/')
 videos.route('/:id')
     .get(function(req, res, next) {
 
-        // task 4 - filter
-        var filter = filterTool.filter(req.query.filter, videosModel);
+        // task 4 filter
+        var filter = filterTool.dofilter().filter(req.query.filter, videosModel);
 
         videosModel.find({_id:req.params.id})
             .select(filter)
@@ -119,7 +123,7 @@ videos.route('/:id')
         if (req.params.id === req.body._id) {
 
             // check required and optional keys in req.body, delete internal keys from req.body
-            storetools.checkKeys(req.body, requiredKeys, optionalKeys, internalKeys, videosModel);
+            storetools.checkKeys(req.body, videosModel);
 
             // find document by id to check versions
             videosModel.findById(req.params.id, function (err, item) {
@@ -176,7 +180,7 @@ videos.route('/:id')
     .patch(function(req,res,next) {
 
         // delete internalKeys from req.body
-        storetools.checkKeys(req.body, undefined, undefined, internalKeys, videosModel);
+        storetools.checkKeys(req.body, videosModel, true);
 
         // find document by id to check versions
         videosModel.findById(req.params.id, function (err, item) {

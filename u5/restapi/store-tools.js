@@ -39,13 +39,13 @@ var codes = {
  * @param req required keys are checked for their type
  * @param opt keys are checked for type. added if not present
  * @param none keys that should not be there
- * @param schema of a collection
+ * @param model of a collection
  * @return {undefined}
  * @throws Error if requirements not fullfilled.
  */
-exports.checkKeys = function checkKeys(item, req, opt, none, schema) {
+exports.checkKeys = function checkKeys(item, model, isPatch) {
 
-    //logger(schema.schema.paths[options]);
+    //logger(model.model.paths[options]);
 
     function throwErr(message, code) {
         var err = new Error(message);
@@ -54,9 +54,32 @@ exports.checkKeys = function checkKeys(item, req, opt, none, schema) {
     }
 
     if (!item) { throwErr("proper body missing", codes.wrongrequest); }
-    req = req || {};
-    opt = opt || {};
-    none = none || {};
+
+    // objs
+    var req = {},
+        opt = {},
+        none = {_id: 'string', timestamp: 'number', "updatedAt": 'number'};
+
+    if(!isPatch){
+        // create req, opt, none objects
+        model.schema.eachPath(function(path) {
+            if( model.schema.paths[path].isRequired ){
+                req[path] = model.schema.paths[path].instance.toString().toLowerCase();
+            } else {
+                opt[path] = model.schema.paths[path].instance.toString().toLowerCase();
+            }
+        });
+
+        // remove none values from opt obj
+        Object.getOwnPropertyNames(opt).filter(function(e) {
+            if(Object.keys(none).indexOf(e) != -1){
+                delete opt[e];
+            }
+        });
+    }
+
+    logger(req);
+    logger(opt);
 
     // check required fields to be correct
     var reqMissing = Object.getOwnPropertyNames(req).filter(function(elem, index, array) {
@@ -100,9 +123,9 @@ exports.checkKeys = function checkKeys(item, req, opt, none, schema) {
         delete item[elem];
     });
 
-    // check if attribute in body.message doesn't define in schema
+    // check if attribute in body.message doesn't define in model
     var wrongValues = Object.getOwnPropertyNames(item).filter(function(elem, index, array) {
-        if(Object.keys(schema.schema.paths).indexOf(elem) == -1){
+        if(Object.keys(model.schema.paths).indexOf(elem) == -1){
             return true;
         }
     });
