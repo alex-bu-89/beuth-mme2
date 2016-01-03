@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="description" content="MME2 Uebung 1">
+    <meta name="author" content="Glöde, Buyanov">
+    <link rel="icon" href="favicon.ico">
+    <title>MME2 Uebung 1</title>
+    <link href="css/app.css" rel="stylesheet">
+    <script data-main="js/appclient" src="js/require.js"></script>
+    <!--<script src="js/app.js"></script>-->
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <a class="navbar-brand" href="#">Buddy</a>
+            </div>
+            <div class="menu-container">
+                <nav>
+                    <ul class="menu">
+                        <li><a href="#">Home</a></li>
+                        <li><a href="#">Settings</a></li>
+                        <li><a href="#">Profile</a></li>
+                        <li><a href="#">Help</a></li>
+                    </ul>
+                </nav>
+                <form class="search">
+                    <input type="text" placeholder="Search...">
+                </form>
+            </div>
+        </div>
+    </header>
+    <div class="main">
+        <aside class="sidebar">
+            <nav>
+                <h2>Main menu</h2>
+                <ul class="sidebar-left">
+                    <li><a href="#">Start</a></li>
+                    <li><a href="#">Subscriptions</a></li>
+                    <li class="active"><a href="#">History</a></li>
+                    <li><a href="#">Watch Later</a></li>
+                </ul>
+                <h2>My channel</h2>
+                <ul class="sidebar-left">
+                    <li><a href="#">Add Video</a></li>
+                    <li><a href="#">Uploads</a></li>
+                    <li><a href="#">Statistics</a></li>
+                    <li><a href="#">Settings</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <section class="tools wrap">
+            <div class="tools-box">
+                <ul class="breadcrumbs">
+                    <li><a href="" >Start</a></li>
+                    <li class="br-current">History</li>
+                </ul>
+                <div class="sort">
+                    <span id="sort-list" class="current">list</span>
+                    <span id="sort-grid">grid</span>
+                </div>
+                <div id="mobile-menu">
+
+                </div>
+            </div>
+        </section>
+        <section class="content list" id="content">
+            <script type="text/template" id="video-template">
+                    <h3 class="video-header"><%= title %></h3>
+                    <div class="control-box">
+                        <video controls>
+                            <source src=<%= src %> type=video/mp4>
+                        </video>
+                    </div>
+                    <div class="info-bar"><span>ranking: <%= ranking %></span> | <span>playcount: <%= playcount %></span></div>
+            </script>
+            <!--<div class="video-box">
+                <h3 class="video-header">Video webm</h3>
+                <div class="control-box">
+                    <video>
+                        <source src=http://download.ted.com/talks/RennyGleeson_2012U-480p.mp4?apikey=489b859150fc58263f17110eeb44ed5fba4a3b22 type=video/webm>
+                    </video>
+                </div>
+            </div>-->
+        </section>
+    </div>
+    <footer>
+        <p>Buddy &#169; 2016</p>
+    </footer>
+</body>
+</html>
