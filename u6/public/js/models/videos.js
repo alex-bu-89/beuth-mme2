@@ -21,14 +21,18 @@ define(['backbone', 'underscore'], function(Backbone, _) {
         },
         validate: function(attr) {
             if ( _.isEmpty(attr.title) ) {
+                console.error("Missing title");
                 return "Missing title";
             }
             if (_.isEmpty(attr.src)) {
+                console.error("Missing src");
                 return "Missing src";
             }
-            if (_.isEmpty(attr.length)) {
+            /*if (_.isEmpty(attr['length'])) {
+                console.error("Missing length");
                 return "Missing length";
-            }
+            }*/
+            // TODO save validate length false. always an error
         }
 
     };
