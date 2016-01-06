@@ -32,7 +32,7 @@ define(['backbone', 'underscore'], function(Backbone, _) {
                 console.error("Missing length");
                 return "Missing length";
             }*/
-            // TODO save validate length false. always an error
+            // TODO always an error if you save length
         }
 
     };

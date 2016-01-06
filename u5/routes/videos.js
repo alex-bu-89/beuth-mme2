@@ -70,8 +70,8 @@ videos.route('/')
         // delete internal keys from req.body
         storetools.checkKeys(req.body, videosModel);
 
-        // set timestamp
-        req.body.timestamp = new Date().getTime();
+        /*// set timestamp
+        req.body.timestamp = new Date().getTime();*/
 
         // insert in db
         var video = new videosModel(req.body);
